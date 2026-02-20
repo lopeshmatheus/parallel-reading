@@ -1,0 +1,95 @@
+:root {
+  /* Neo-Brutalist Color Palette */
+  --color-bg: #fff5e1; /* Off-white warm background */
+  --color-primary: #ffeb3b; /* Vibrant Yellow */
+  --color-secondary: #00e5ff; /* Cyan */
+  --color-tertiary: #ff4081; /* Pink */
+  --color-text: #1a1a1a;
+  --color-border: #1a1a1a;
+  --color-card-bg: #ffffff;
+  --color-success: #00e676;
+
+  /* Borders & Shadows */
+  --border-width: 3px;
+  --shadow-offset: 4px;
+  --box-shadow: var(--shadow-offset) var(--shadow-offset) 0px
+    var(--color-border);
+  --box-shadow-hover: 6px 6px 0px var(--color-border);
+  --border-radius: 8px;
+
+  /* Typography */
+  --font-family: "Space Mono", "Courier New", Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Neo-Brutalist Global Utilities */
+.btn-brutal {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: var(--color-primary);
+  color: var(--color-text);
+  font-weight: bold;
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.btn-brutal:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--box-shadow-hover);
+}
+
+.btn-brutal:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--color-border);
+}
+
+.card-brutal {
+  background-color: var(--color-card-bg);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 20px;
+}
+
+.title-brutal {
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  color: var(--color-text);
+  background: var(--color-secondary);
+  display: inline-block;
+  padding: 5px 15px;
+  border: var(--border-width) solid var(--color-border);
+  box-shadow: 3px 3px 0px var(--color-border);
+  transform: rotate(-2deg);
+}
+
+header.app-header {
+  padding: 20px;
+  background-color: var(--color-tertiary);
+  border-bottom: var(--border-width) solid var(--color-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
