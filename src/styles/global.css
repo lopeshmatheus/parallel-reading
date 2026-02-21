@@ -1,24 +1,33 @@
-:root {
-  /* Neo-Brutalist Color Palette */
-  --color-bg: #fff5e1; /* Off-white warm background */
-  --color-primary: #ffeb3b; /* Vibrant Yellow */
-  --color-secondary: #00e5ff; /* Cyan */
-  --color-tertiary: #ff4081; /* Pink */
-  --color-text: #1a1a1a;
-  --color-border: #1a1a1a;
-  --color-card-bg: #ffffff;
-  --color-success: #00e676;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-  /* Borders & Shadows */
-  --border-width: 3px;
-  --shadow-offset: 4px;
-  --box-shadow: var(--shadow-offset) var(--shadow-offset) 0px
-    var(--color-border);
-  --box-shadow-hover: 6px 6px 0px var(--color-border);
+:root {
+  /* Linga.io Inspired Color Palette */
+  --color-bg: #f8f9fa; /* Very soft light gray */
+  --color-primary: #00BFA5; /* Sleek Teal */
+  --color-primary-hover: #00a891;
+  
+  --color-secondary: #f0f0f0; /* Soft button background */
+  --color-secondary-hover: #e4e4e4;
+  
+  --color-danger: #ef4444; /* Clean red */
+  --color-danger-hover: #dc2626;
+  
+  --color-text: #202124; /* Google Dark Gray */
+  --color-text-secondary: #5f6368; /* Subtle gray */
+  --color-divider: #e8eaed; /* Soft border */
+  
+  --color-card-bg: #ffffff;
+  --color-white: #ffffff;
+
+  /* Sleek modern radii and shadows */
   --border-radius: 8px;
+  --border-radius-card: 12px;
+  
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
 
   /* Typography */
-  --font-family: "Space Mono", "Courier New", Courier, monospace;
+  --font-family: 'Inter', system-ui, sans-serif;
 }
 
 * {
@@ -33,63 +42,148 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Neo-Brutalist Global Utilities */
-.btn-brutal {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: var(--color-primary);
-  color: var(--color-text);
-  font-weight: bold;
-  font-family: var(--font-family);
-  text-transform: uppercase;
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  cursor: pointer;
-  transition:
-    transform 0.1s ease,
-    box-shadow 0.1s ease;
-}
-
-.btn-brutal:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--box-shadow-hover);
-}
-
-.btn-brutal:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0px var(--color-border);
-}
-
-.card-brutal {
-  background-color: var(--color-card-bg);
-  border: var(--border-width) solid var(--color-border);
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-  padding: 20px;
-}
-
-.title-brutal {
-  font-size: 2.5rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  margin-bottom: 20px;
-  color: var(--color-text);
-  background: var(--color-secondary);
-  display: inline-block;
-  padding: 5px 15px;
-  border: var(--border-width) solid var(--color-border);
-  box-shadow: 3px 3px 0px var(--color-border);
-  transform: rotate(-2deg);
-}
-
-header.app-header {
-  padding: 20px;
-  background-color: var(--color-tertiary);
-  border-bottom: var(--border-width) solid var(--color-border);
-  display: flex;
-  justify-content: center;
+/* Base Utilities */
+.btn {
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  height: 44px;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-weight: 600;
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  outline: none;
+  position: relative;
+  user-select: none;
+}
+
+.btn:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Button Variants */
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-secondary-hover);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: var(--color-white);
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--color-danger-hover);
+}
+
+.card {
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--border-radius-card);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #e5e7eb;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+/* App Bar */
+header.app-header {
+  height: 64px;
+  padding: 0 24px;
+  background-color: var(--color-white);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-divider);
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header.app-header .title {
+  color: var(--color-primary);
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* Layout Utilities */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content-area {
+  flex: 1;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.dropzone {
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--border-radius-card);
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: var(--color-white);
+}
+
+.dropzone:hover {
+  background-color: #f8fafc;
+  border-color: var(--color-primary);
+}
+
+.sticky-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--color-white);
+  border-top: 1px solid var(--color-divider);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
 }

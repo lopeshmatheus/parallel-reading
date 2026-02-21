@@ -47,3 +47,8 @@ export const getBookById = async (id: string): Promise<(Book & { id: string }) |
   const db = await getDB();
   return db.get('books', id);
 };
+
+export const removeBook = async (id: string): Promise<void> => {
+  const db = await getDB();
+  await db.delete('books', id);
+};
