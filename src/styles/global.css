@@ -272,3 +272,54 @@ header.app-header .title {
 .btn-auth-social:active {
   transform: scale(0.98);
 }
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(100vw);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(-100vw);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-right {
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Book Pagination Styling */
+.book-spread {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.book-page {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .book-spread {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 1023px) {
+  .hidden-on-mobile {
+    display: none;
+  }
+}

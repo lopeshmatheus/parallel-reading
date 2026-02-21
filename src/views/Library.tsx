@@ -63,12 +63,12 @@ export default function Library() {
         </button>
       </header>
       <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '100px 24px 40px' }}>
-      <div className="library-view">
+      <div className="library-view animate-fade-in-up">
       <div style={{ marginBottom: '40px' }}>
         <h2 className="title" style={{ fontSize: '1.75rem', fontWeight: '700', letterSpacing: '-0.02em', marginBottom: '8px' }}>Comece a Ler</h2>
         <p style={{ color: 'var(--color-text-secondary)', marginBottom: '32px', fontSize: '1.05rem', fontWeight: '400' }}>Adicione um novo arquivo EPUB e mergulhe no texto.</p>
         
-        <label className="dropzone" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', border: '1px dashed #cbd5e1', backgroundColor: '#f8fafc', padding: '64px 24px' }}>
+        <label className="dropzone animate-fade-in-up animate-delay-100" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', border: '1px dashed #cbd5e1', backgroundColor: '#f8fafc', padding: '64px 24px' }}>
           <div style={{ pointerEvents: 'none', textAlign: 'center' }}>
             <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', marginBottom: '16px' }}>📖</div>
             <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '8px', fontWeight: '500' }}>Toque ou arraste um livro aqui</h3>
@@ -96,7 +96,7 @@ export default function Library() {
              <p>Você ainda não adicionou nenhum livro.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="animate-fade-in-up animate-delay-200" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {books.map(book => (
               <div key={book.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: 'var(--color-white)', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid var(--color-divider)' }}>
                 <div>

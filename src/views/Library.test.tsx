@@ -5,11 +5,16 @@ import { BrowserRouter } from 'react-router-dom';
 
 vi.mock('../services/storageService', () => ({
   getBooks: vi.fn(),
-  saveBook: vi.fn()
+  saveBook: vi.fn(),
+  removeBook: vi.fn(),
 }));
 
 vi.mock('../services/epubService', () => ({
   parseEpub: vi.fn()
+}));
+
+vi.mock('../components/AuthContext', () => ({
+  useAuth: vi.fn(() => ({ logout: vi.fn(), user: { uid: '123' } })),
 }));
 
 const renderWithRouter = (ui: React.ReactElement) => {
@@ -23,8 +28,8 @@ describe('Library View', () => {
 
     renderWithRouter(<Library />);
     
-    expect(screen.getByText('Importar Novo Livro')).toBeInTheDocument();
-    expect(screen.getByText('Biblioteca vazia. Comece importando um novo livro!')).toBeInTheDocument();
+    expect(screen.getByText('Toque ou arraste um livro aqui')).toBeInTheDocument();
+    expect(await screen.findByText('Você ainda não adicionou nenhum livro.')).toBeInTheDocument();
   });
 
   it('should render books when available', async () => {

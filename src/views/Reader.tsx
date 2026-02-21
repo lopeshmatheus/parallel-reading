@@ -23,7 +23,11 @@ export default function Reader() {
   const [isCalculatingLayout, setIsCalculatingLayout] = useState(false);
   const [pages, setPages] = useState<number[][]>([]); // Array of pages (arrays of sentence indices)
   const [currentPage, setCurrentPage] = useState(0);
+  const pagesPerView = 1;
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Animation State
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
 
   // Translation State
   const [isTranslating, setIsTranslating] = useState(false);
@@ -106,7 +110,9 @@ export default function Reader() {
          setPages(fallbackPages);
          if (currentPage >= fallbackPages.length) setCurrentPage(Math.max(0, fallbackPages.length - 1));
          setIsCalculatingLayout(false);
-         loadPageTranslations(fallbackPages, currentPage, sentences);
+         for(let i=0; i < pagesPerView; i++) {
+           loadPageTranslations(fallbackPages, currentPage + i, sentences);
+         }
          return;
       }
       
@@ -117,7 +123,9 @@ export default function Reader() {
       setIsCalculatingLayout(false);
       
       if (newPages.length > 0) {
-        loadPageTranslations(newPages, nextCurrentPage, sentences);
+        for(let i=0; i < pagesPerView; i++) {
+          loadPageTranslations(newPages, nextCurrentPage + i, sentences);
+        }
       }
     }
   }, [isCalculatingLayout, sentences]);
@@ -221,16 +229,23 @@ export default function Reader() {
   };
 
   const handleNext = () => {
-    if (currentPage < pages.length - 1) {
-      setCurrentPage(p => p + 1);
-      loadPageTranslations(pages, currentPage + 1, sentences);
+    if (currentPage < pages.length - pagesPerView) {
+      setSlideDirection('left');
+      setCurrentPage(p => p + pagesPerView);
+      for(let i=0; i < pagesPerView; i++) {
+        loadPageTranslations(pages, currentPage + pagesPerView + i, sentences);
+      }
     }
   };
 
   const handlePrev = () => {
     if (currentPage > 0) {
-      setCurrentPage(p => p - 1);
-      loadPageTranslations(pages, currentPage - 1, sentences);
+      setSlideDirection('right');
+      const nextP = Math.max(0, currentPage - pagesPerView);
+      setCurrentPage(nextP);
+      for(let i=0; i < pagesPerView; i++) {
+        loadPageTranslations(pages, nextP + i, sentences);
+      }
     }
   };
 
@@ -247,18 +262,16 @@ export default function Reader() {
       
       {/* Hidden Buffer for height calculation */}
       {isCalculatingLayout && (
-        <div 
-          ref={containerRef} 
-          className="reader-container"
-          style={{ position: 'absolute', top: '-9999px', left: '0', width: '100%', visibility: 'hidden', display: 'block' }}
-        >
-          {sentences.map((sentence, i) => (
-            <SentencePair key={'calc-'+i} original={sentence.text} translated={sentence.text} />
-          ))}
+        <div style={{ position: 'absolute', top: '-9999px', left: '0', width: '100%', visibility: 'hidden', display: 'flex' }} className="reader-container book-spread">
+          <div ref={containerRef} className="book-page" style={{ display: 'block' }}>
+            {sentences.map((sentence, i) => (
+              <SentencePair key={'calc-'+i} original={sentence.text} translated={sentence.text} />
+            ))}
+          </div>
         </div>
       )}
 
-      <header style={{ 
+      <header className="animate-fade-in-up" style={{ 
         position: 'fixed', top: 0, left: 0, right: 0, height: '60px', 
         backgroundColor: 'rgba(255, 255, 255, 0.9)', zIndex: 100, display: 'flex', 
         alignItems: 'center', padding: '0 24px', borderBottom: '1px solid rgba(0,0,0,0.05)',
@@ -290,23 +303,36 @@ export default function Reader() {
           message="Traduzindo página..." 
         />
       ) : !isCalculatingLayout && (
-        <div style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: 'auto 0' }}>
-          {currentPageIndices.map(globalIdx => (
-            <SentencePair 
-              key={globalIdx} 
-              original={sentences[globalIdx].text} 
-              translated={translations[globalIdx]} 
-            />
-          ))}
+        <div 
+          key={currentPage} 
+          data-testid="page-container" 
+          className={`book-spread ${slideDirection ? (slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right') : 'animate-fade-in-up animate-delay-100'}`} 
+          style={{ minHeight: '300px', display: 'flex', margin: 'auto 0' }}
+        >
+          {Array.from({ length: pagesPerView }).map((_, offset) => {
+            const pageIdx = currentPage + offset;
+            const indices = pageIdx < pages.length ? pages[pageIdx] : [];
+            return (
+              <div key={offset} className={`book-page ${offset === 1 ? 'hidden-on-mobile' : ''}`}>
+                {indices.map(globalIdx => (
+                  <SentencePair 
+                    key={globalIdx} 
+                    original={sentences[globalIdx].text} 
+                    translated={translations[globalIdx]} 
+                  />
+                ))}
+              </div>
+            );
+          })}
           {currentPageIndices.length === 0 && !hasMoreToRead && (
-            <div className="card" style={{ padding: '30px', textAlign: 'center' }}>Fim do Livro.</div>
+            <div className="card" style={{ padding: '30px', textAlign: 'center', flex: 1 }}>Fim do Livro.</div>
           )}
         </div>
       )}
 
       </div>
 
-      <div className="sticky-bottom-bar" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+      <div className="sticky-bottom-bar animate-fade-in-up animate-delay-200" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(8px)', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
         <button 
           className="btn btn-secondary" 
           onClick={handlePrev}
