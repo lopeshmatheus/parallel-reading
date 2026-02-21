@@ -30,6 +30,7 @@ export default function Reader() {
   const [translationProgress, setTranslationProgress] = useState(0);
   // Dictionary of index -> translation
   const [translations, setTranslations] = useState<Record<number, string>>({});
+  const translationsRef = useRef<Record<number, string>>({});
   
   const PREFETCH_WINDOW = 4; // Lookahead amount of pages
 
@@ -131,16 +132,13 @@ export default function Reader() {
     
     const indices = layoutPages[pageIndex];
     
-    setTranslations((prev) => {
-      const isCompletelyTranslated = indices.every(i => prev[i] !== undefined);
-      if (isCompletelyTranslated) {
-         triggerPrefetch(pageIndex, layoutPages, currentSentences);
-         return prev;
-      }
-      
-      loadAsync(layoutPages, pageIndex, currentSentences);
-      return prev;
-    });
+    const isCompletelyTranslated = indices.every(i => translationsRef.current[i] !== undefined);
+    if (isCompletelyTranslated) {
+       triggerPrefetch(pageIndex, layoutPages, currentSentences);
+       return;
+    }
+    
+    loadAsync(layoutPages, pageIndex, currentSentences);
   };
 
   const loadAsync = async (layoutPages: number[][], pageIndex: number, currentSentences: ParsedSentence[]) => {
@@ -158,13 +156,12 @@ export default function Reader() {
       const translated = await translateSentences(pageSentences.map(s => s.text));
       clearInterval(simInt);
       
-      setTranslations(prev => {
-        const next = { ...prev };
-        indices.forEach((globalIdx, localIdx) => {
-          next[globalIdx] = translated[localIdx];
-        });
-        return next;
+      const next = { ...translationsRef.current };
+      indices.forEach((globalIdx, localIdx) => {
+        next[globalIdx] = translated[localIdx];
       });
+      translationsRef.current = next;
+      setTranslations(next);
       setTranslationProgress(pageSentences.length);
     } catch(e) {
       console.error(e);
@@ -202,24 +199,19 @@ export default function Reader() {
      const pageIdx = prefetchQueue.current.shift()!;
      const indices = layoutPages[pageIdx];
      
-     let needsFetch = false;
-     setTranslations(prev => {
-       needsFetch = indices.some(i => prev[i] === undefined);
-       return prev;
-     });
+     const needsFetch = indices.some(i => translationsRef.current[i] === undefined);
 
      if (needsFetch) {
        const pageSentences = indices.map(i => currentSentences[i].text);
        try {
          await new Promise(r => setTimeout(r, 1500)); 
          const translated = await translateSentences(pageSentences);
-         setTranslations(prev => {
-           const next = { ...prev };
-           indices.forEach((globalIdx, localIdx) => {
-             next[globalIdx] = translated[localIdx];
-           });
-           return next;
+         const next = { ...translationsRef.current };
+         indices.forEach((globalIdx, localIdx) => {
+           next[globalIdx] = translated[localIdx];
          });
+         translationsRef.current = next;
+         setTranslations(next);
        } catch(e) {
          console.error("Prefetch error", e);
        }
