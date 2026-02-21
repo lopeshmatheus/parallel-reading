@@ -33,4 +33,13 @@ Este documento define regras, padrões e convenções a serem utilizadas pelo Ag
 - **Tradução:** Preservação máxima do sentido e pontuação. A IA não deve modificar a quantidade de frases originadas pelo `Intl.Segmenter`.
 - **Cache Local:** Nunca chamar a API para uma página/frase que já foi traduzida e salva no IndexedDB.
 
+## 4. Git Flow e Branching
+
+O desenvolvimento seguirá uma estrutura organizada de branches:
+
+- **`master` / `main`**: Código de produção perfeitamente estável. Apenas commits funcionais e aprovados chegam aqui.
+- **`development` / `dev`**: Branch principal de integração durante o desenvolvimento ativo. É a base para novas features antes de irem para produção.
+- **`feature/*`**: Para o desenvolvimento de novas funcionalidades (ex: `feature/auth-system`, `feature/epub-parser`). Devem ser mergeadas no `dev` ao serem finalizadas.
+- **`bugfix/*` ou `hotfix/*`**: Para correções de erros. O `bugfix` geralmente é mergeado no `dev`, enquanto `hotfix` vai direto na `master` e `dev`.
+
 Estas regras devem ser consultadas e aplicadas ativamente.

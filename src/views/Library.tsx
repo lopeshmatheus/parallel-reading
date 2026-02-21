@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBooks, saveBook, removeBook } from '../services/storageService';
 import { parseEpub, type Book } from '../services/epubService';
+import { useAuth } from '../components/AuthContext';
 
 export default function Library() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [books, setBooks] = useState<(Book & { id: string })[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -43,8 +45,22 @@ export default function Library() {
 
   return (
     <>
-      <header className="app-header" style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 100 }}>
+      <header className="app-header" style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 100, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 className="title">Leitor Paralelo</h1>
+        <button 
+          onClick={logout} 
+          style={{ 
+            background: 'none', 
+            border: 'none', 
+            color: 'var(--color-primary)', 
+            cursor: 'pointer', 
+            fontWeight: 600,
+            fontSize: '1rem',
+            padding: '8px 16px'
+          }}
+        >
+          Sair
+        </button>
       </header>
       <div style={{ width: '100%', maxWidth: '800px', margin: '0 auto', padding: '100px 24px 40px' }}>
       <div className="library-view">

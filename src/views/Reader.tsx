@@ -265,7 +265,7 @@ export default function Reader() {
         backdropFilter: 'blur(8px)'
       }}>
         <button className="btn btn-secondary" style={{ padding: '0 12px', height: '36px', minWidth: 'auto', marginRight: '24px', fontSize: '0.85rem' }} onClick={() => navigate('/')}>
-          Sair
+          Voltar
         </button>
         
         <div style={{ flex: 1, height: '4px', backgroundColor: 'var(--color-divider)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
