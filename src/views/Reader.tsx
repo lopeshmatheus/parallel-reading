@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getBookById } from '../services/storageService';
 import type { Book } from '../services/epubService';
-import { extractSentences } from '../services/sentenceExtractor';
+import { BookStreamer, type ParsedSentence } from '../services/sentenceExtractor';
 import { translateSentences } from '../services/translationService';
 import SentencePair from '../components/SentencePair';
 import TranslationProgress from '../components/TranslationProgress';
@@ -13,8 +13,11 @@ export default function Reader() {
   const bookId = searchParams.get('bookId');
 
   const [book, setBook] = useState<Book | null>(null);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [sentences, setSentences] = useState<string[]>([]);
+  
+  // Streamer State
+  const streamerRef = useRef<BookStreamer | null>(null);
+  const [sentences, setSentences] = useState<ParsedSentence[]>([]);
+  const CHUNK_SIZE = 100; // How many sentences to parse ahead at a time
   
   // Layout State
   const [isCalculatingLayout, setIsCalculatingLayout] = useState(false);
@@ -35,27 +38,26 @@ export default function Reader() {
       getBookById(bookId).then(b => {
         if (b) {
           setBook(b);
-          loadChapter(b, 0);
+          streamerRef.current = new BookStreamer(b, 0, 'en');
+          fetchMoreSentences();
         }
       });
     }
   }, [bookId]);
 
-  const loadChapter = (b: Book, idx: number) => {
-    setCurrentChapterIndex(idx);
-    if (b.chapters[idx]) {
-      const extracted = extractSentences(b.chapters[idx].htmlContent);
-      setSentences(extracted);
-      setTranslations({}); // clear dictionary on chapter change
-      if (extracted.length > 0) {
-        setIsCalculatingLayout(true);
-      } else {
-        setIsCalculatingLayout(false);
-        setPages([]);
-        setCurrentPage(0);
+  const fetchMoreSentences = useCallback(() => {
+    if (!streamerRef.current || !streamerRef.current.hasMore()) return;
+    const newChunk = streamerRef.current.getNextSentences(CHUNK_SIZE);
+    if (newChunk.length > 0) {
+      setSentences(prev => [...prev, ...newChunk]);
+      setIsCalculatingLayout(true);
+    } else {
+      // Edge case: if chunk was empty but hasMore is true (empty chapter), recursively skip
+      if (streamerRef.current.hasMore()) {
+        fetchMoreSentences();
       }
     }
-  };
+  }, []);
 
   // 1. Layout Calculation Effect
   useEffect(() => {
@@ -77,17 +79,13 @@ export default function Reader() {
       let currentHeight = 0;
 
       sentenceElements.forEach((el, idx) => {
-        // Since they are side-by-side, translation doesn't add much vertical height.
-        // We just add a small buffer + the 40px margin-bottom from SentencePair
         const estimatedHeight = el.offsetHeight + 40; 
         
         if (currentHeight + estimatedHeight > availableHeight && currentPageIndices.length > 0) {
-          // Push current page and start a new one
           newPages.push(currentPageIndices);
           currentPageIndices = [idx];
           currentHeight = estimatedHeight;
         } else {
-          // Add to current page
           currentPageIndices.push(idx);
           currentHeight += estimatedHeight;
         }
@@ -97,7 +95,7 @@ export default function Reader() {
         newPages.push(currentPageIndices);
       }
       
-      // Fallback if measurement failed (e.g. everything was 0 height)
+      // Fallback if measurement failed
       if (newPages.length === 0 || newPages[0].length === 0) {
          console.warn("Layout calc failed or empty, falling back to 10 sentences per page");
          const fallbackPages = [];
@@ -105,29 +103,34 @@ export default function Reader() {
             fallbackPages.push(sentences.slice(i, i+10).map((_, localIdx) => i + localIdx));
          }
          setPages(fallbackPages);
-         setCurrentPage(0);
+         if (currentPage >= fallbackPages.length) setCurrentPage(Math.max(0, fallbackPages.length - 1));
          setIsCalculatingLayout(false);
-         loadPageTranslations(fallbackPages, 0, sentences);
+         loadPageTranslations(fallbackPages, currentPage, sentences);
          return;
       }
       
       setPages(newPages);
-      setCurrentPage(0);
+      // Make sure current page is still valid after resizing/appending
+      const nextCurrentPage = currentPage < newPages.length ? currentPage : Math.max(0, newPages.length - 1);
+      setCurrentPage(nextCurrentPage);
       setIsCalculatingLayout(false);
       
-      // Load first page immediately
       if (newPages.length > 0) {
-        loadPageTranslations(newPages, 0, sentences);
+        loadPageTranslations(newPages, nextCurrentPage, sentences);
       }
     }
   }, [isCalculatingLayout, sentences]);
 
-  const loadPageTranslations = async (layoutPages: number[][], pageIndex: number, currentSentences: string[]) => {
+  const loadPageTranslations = async (layoutPages: number[][], pageIndex: number, currentSentences: ParsedSentence[]) => {
     if (pageIndex >= layoutPages.length) return;
+    
+    // Trigger appending more parsed sentences if we are getting close to the edge
+    if (pageIndex >= layoutPages.length - PREFETCH_WINDOW - 2 && !isCalculatingLayout) {
+       fetchMoreSentences();
+    }
     
     const indices = layoutPages[pageIndex];
     
-    // Check if we already have these translations in state to avoid loading bar flashing
     setTranslations((prev) => {
       const isCompletelyTranslated = indices.every(i => prev[i] !== undefined);
       if (isCompletelyTranslated) {
@@ -135,13 +138,12 @@ export default function Reader() {
          return prev;
       }
       
-      // Not translated, proceed with load
       loadAsync(layoutPages, pageIndex, currentSentences);
       return prev;
     });
   };
 
-  const loadAsync = async (layoutPages: number[][], pageIndex: number, currentSentences: string[]) => {
+  const loadAsync = async (layoutPages: number[][], pageIndex: number, currentSentences: ParsedSentence[]) => {
     setIsTranslating(true);
     setTranslationProgress(0);
     
@@ -153,7 +155,7 @@ export default function Reader() {
         setTranslationProgress(p => (p < pageSentences.length ? p + 1 : p));
       }, 300);
 
-      const translated = await translateSentences(pageSentences);
+      const translated = await translateSentences(pageSentences.map(s => s.text));
       clearInterval(simInt);
       
       setTranslations(prev => {
@@ -176,7 +178,7 @@ export default function Reader() {
   const prefetchQueue = useRef<number[]>([]);
   const isPrefetching = useRef(false);
 
-  const triggerPrefetch = useCallback((currentPageIdx: number, layoutPages: number[][], currentSentences: string[]) => {
+  const triggerPrefetch = useCallback((currentPageIdx: number, layoutPages: number[][], currentSentences: ParsedSentence[]) => {
      const pagesToFetch = [];
      for(let i = 1; i <= PREFETCH_WINDOW; i++) {
         const target = currentPageIdx + i;
@@ -191,7 +193,7 @@ export default function Reader() {
      }
   }, []);
 
-  const processPrefetchQueue = async (layoutPages: number[][], currentSentences: string[]) => {
+  const processPrefetchQueue = async (layoutPages: number[][], currentSentences: ParsedSentence[]) => {
      if (prefetchQueue.current.length === 0) {
        isPrefetching.current = false;
        return;
@@ -200,8 +202,6 @@ export default function Reader() {
      const pageIdx = prefetchQueue.current.shift()!;
      const indices = layoutPages[pageIdx];
      
-     // Only prefetch if we don't have it in state
-     // We do a hacky check by looking at the first sentence of the page
      let needsFetch = false;
      setTranslations(prev => {
        needsFetch = indices.some(i => prev[i] === undefined);
@@ -209,9 +209,8 @@ export default function Reader() {
      });
 
      if (needsFetch) {
-       const pageSentences = indices.map(i => currentSentences[i]);
+       const pageSentences = indices.map(i => currentSentences[i].text);
        try {
-         // Grace period between background requests
          await new Promise(r => setTimeout(r, 1500)); 
          const translated = await translateSentences(pageSentences);
          setTranslations(prev => {
@@ -226,7 +225,6 @@ export default function Reader() {
        }
      }
      
-     // Recurse
      processPrefetchQueue(layoutPages, currentSentences);
   };
 
@@ -234,8 +232,6 @@ export default function Reader() {
     if (currentPage < pages.length - 1) {
       setCurrentPage(p => p + 1);
       loadPageTranslations(pages, currentPage + 1, sentences);
-    } else if (book && currentChapterIndex < book.chapters.length - 1) {
-      loadChapter(book, currentChapterIndex + 1);
     }
   };
 
@@ -243,8 +239,6 @@ export default function Reader() {
     if (currentPage > 0) {
       setCurrentPage(p => p - 1);
       loadPageTranslations(pages, currentPage - 1, sentences);
-    } else if (book && currentChapterIndex > 0) {
-      loadChapter(book, currentChapterIndex - 1);
     }
   };
 
@@ -252,6 +246,9 @@ export default function Reader() {
 
   const totalPages = pages.length;
   const currentPageIndices = totalPages > 0 && currentPage < totalPages ? pages[currentPage] : [];
+  const firstSentenceIdx = currentPageIndices[0];
+  const currentChapter = firstSentenceIdx !== undefined && sentences[firstSentenceIdx] ? sentences[firstSentenceIdx].chapterIndex : 0;
+  const hasMoreToRead = currentPage < totalPages - 1 || (streamerRef.current?.hasMore() ?? false);
 
   return (
     <div className="reader-view" style={{ paddingBottom: '120px', backgroundColor: 'var(--color-white)', minHeight: '100vh', padding: '0 8%' }}>
@@ -262,8 +259,8 @@ export default function Reader() {
           ref={containerRef} 
           style={{ position: 'absolute', top: '-9999px', left: '0', width: '100%', padding: '0 8%', visibility: 'hidden', display: 'block' }}
         >
-          {sentences.map((orig, i) => (
-            <SentencePair key={'calc-'+i} original={orig} translated={undefined} />
+          {sentences.map((sentence, i) => (
+            <SentencePair key={'calc-'+i} original={sentence.text} translated={undefined} />
           ))}
         </div>
       )}
@@ -279,14 +276,15 @@ export default function Reader() {
         </button>
         
         <div style={{ flex: 1, height: '4px', backgroundColor: 'var(--color-divider)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+           {/* In continuous scrolling, we base progress on chapter index rather than exactly pages */}
           <div style={{ 
-            width: `${((currentPage + 1) / (totalPages || 1)) * 100}%`, 
-            height: '100%', backgroundColor: 'var(--color-primary)', transition: 'width 0.3s ease' 
+            width: `${((currentChapter + 1) / (book.chapters.length || 1)) * 100}%`, 
+            height: '100%', backgroundColor: 'var(--color-primary)', transition: 'width 0.5s ease' 
           }} />
         </div>
         
         <div style={{ fontWeight: '500', marginLeft: '24px', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-          Página {currentPage + 1} de {totalPages || 1}
+          {Math.round(((currentChapter + 1) / (book.chapters.length || 1)) * 100)}% concluído
         </div>
       </header>
       
@@ -303,12 +301,12 @@ export default function Reader() {
           {currentPageIndices.map(globalIdx => (
             <SentencePair 
               key={globalIdx} 
-              original={sentences[globalIdx]} 
+              original={sentences[globalIdx].text} 
               translated={translations[globalIdx]} 
             />
           ))}
-          {currentPageIndices.length === 0 && (
-            <div className="card" style={{ padding: '30px', textAlign: 'center' }}>Capítulo vazio.</div>
+          {currentPageIndices.length === 0 && !hasMoreToRead && (
+            <div className="card" style={{ padding: '30px', textAlign: 'center' }}>Fim do Livro.</div>
           )}
         </div>
       )}
@@ -319,7 +317,7 @@ export default function Reader() {
         <button 
           className="btn btn-secondary" 
           onClick={handlePrev}
-          disabled={currentPage === 0 && currentChapterIndex === 0 || isTranslating || isCalculatingLayout}
+          disabled={currentPage === 0 || isTranslating || isCalculatingLayout}
           style={{ width: '48%' }}
         >
           Anterior
@@ -327,7 +325,7 @@ export default function Reader() {
         <button 
           className="btn" 
           onClick={handleNext}
-          disabled={(currentPage >= Math.max(0, totalPages - 1) && currentChapterIndex === book.chapters.length - 1) || isTranslating || isCalculatingLayout}
+          disabled={!hasMoreToRead || isTranslating || isCalculatingLayout}
           style={{ width: '48%' }}
         >
           Próxima

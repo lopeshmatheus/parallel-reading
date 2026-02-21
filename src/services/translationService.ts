@@ -13,16 +13,28 @@ export const translateSentences = async (sentences: string[], targetLang: string
   // Check cache first
   for (let i = 0; i < sentences.length; i++) {
     const original = sentences[i];
-    const cached = await db.get('translations', original);
-    if (cached && cached.lang === targetLang) {
-      results[i] = cached.translated;
-    } else {
+    // IndexedDB keys cannot be empty strings, null, or undefined
+    if (!original || typeof original !== 'string' || original.trim() === '') {
+       results[i] = original; // just return it as is
+       continue;
+    }
+
+    try {
+      const cached = await db.get('translations', original);
+      if (cached && cached.lang === targetLang) {
+        results[i] = cached.translated;
+      } else {
+        missingIndices.push(i);
+        missingSentences.push(original);
+      }
+    } catch(err) {
+      // Fallback if DB get completely fails
       missingIndices.push(i);
       missingSentences.push(original);
     }
   }
 
-  // If all are cached, return
+  // If all are cached or empty, return
   if (missingSentences.length === 0) return results;
 
   // Otherwise, call Gemini API
