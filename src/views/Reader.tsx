@@ -243,16 +243,17 @@ export default function Reader() {
   const hasMoreToRead = currentPage < totalPages - 1 || (streamerRef.current?.hasMore() ?? false);
 
   return (
-    <div className="reader-view" style={{ paddingBottom: '120px', backgroundColor: 'var(--color-white)', minHeight: '100vh', padding: '0 8%' }}>
+    <div className="reader-view reader-container" style={{ paddingBottom: '100px', backgroundColor: 'var(--color-white)', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       
       {/* Hidden Buffer for height calculation */}
       {isCalculatingLayout && (
         <div 
           ref={containerRef} 
-          style={{ position: 'absolute', top: '-9999px', left: '0', width: '100%', padding: '0 8%', visibility: 'hidden', display: 'block' }}
+          className="reader-container"
+          style={{ position: 'absolute', top: '-9999px', left: '0', width: '100%', visibility: 'hidden', display: 'block' }}
         >
           {sentences.map((sentence, i) => (
-            <SentencePair key={'calc-'+i} original={sentence.text} translated={undefined} />
+            <SentencePair key={'calc-'+i} original={sentence.text} translated={sentence.text} />
           ))}
         </div>
       )}
@@ -280,7 +281,7 @@ export default function Reader() {
         </div>
       </header>
       
-      <div style={{ paddingTop: '100px' }}>
+      <div style={{ paddingTop: '80px', flex: 1, display: 'flex', flexDirection: 'column' }}>
       
       {!isCalculatingLayout && isTranslating ? (
         <TranslationProgress 
@@ -289,7 +290,7 @@ export default function Reader() {
           message="Traduzindo página..." 
         />
       ) : !isCalculatingLayout && (
-        <div style={{ minHeight: '300px' }}>
+        <div style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: 'auto 0' }}>
           {currentPageIndices.map(globalIdx => (
             <SentencePair 
               key={globalIdx} 

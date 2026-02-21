@@ -187,3 +187,29 @@ header.app-header .title {
   align-items: center;
   z-index: 100;
 }
+
+.reader-container {
+  padding: 0 8%;
+}
+
+.sentence-pair {
+  display: flex;
+  flex-direction: row;
+  gap: 64px;
+  align-items: flex-start;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 768px) {
+  .reader-container {
+    padding: 0 4%;
+  }
+  
+  .sentence-pair {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+    align-items: center;
+    text-align: center;
+  }
+}
