@@ -60,7 +60,11 @@ ${missingSentences.join('\n')}`;
       })
     });
 
-    if (!res.ok) throw new Error('API request failed');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error('Gemini API Error details:', errorData);
+      throw new Error(`API request failed with status ${res.status}: ${JSON.stringify(errorData)}`);
+    }
 
     const data = await res.json();
     const translationText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
