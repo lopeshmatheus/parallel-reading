@@ -213,3 +213,62 @@ header.app-header .title {
     text-align: center;
   }
 }
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-delay-100 {
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.animate-delay-200 {
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+
+.input-auth {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-auth:focus {
+  border-bottom-color: var(--color-primary);
+}
+
+.btn-auth-primary {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-auth-primary:hover:not(:disabled) {
+  background-color: #0d615a; /* darker teal */
+}
+
+.btn-auth-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-auth-social {
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-auth-social:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btn-auth-social:active {
+  transform: scale(0.98);
+}

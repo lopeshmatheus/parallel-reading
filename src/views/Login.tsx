@@ -47,7 +47,7 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '40px 24px', fontFamily: 'var(--font-family)' }}>
+    <div className="animate-fade-in-up" style={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', padding: '40px 24px', fontFamily: 'var(--font-family)' }}>
       
       {/* Header Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '48px' }}>
@@ -79,7 +79,7 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <form onSubmit={handleSubmit} className="animate-fade-in-up animate-delay-100" style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           {error && (
             <div style={{ backgroundColor: '#fef2f2', padding: '16px', borderRadius: '8px', color: '#b91c1c', fontSize: '0.875rem' }}>
               {error}
@@ -96,6 +96,7 @@ export const Login: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="input-auth"
               style={{ display: 'block', width: '100%', padding: '12px 0', color: '#111827', border: 'none', borderBottom: '2px solid #e5e7eb', outline: 'none', fontSize: '1.125rem', backgroundColor: 'transparent' }}
             />
           </div>
@@ -110,6 +111,7 @@ export const Login: React.FC = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              className="input-auth"
               style={{ display: 'block', width: '100%', padding: '12px 60px 12px 0', color: '#111827', border: 'none', borderBottom: '2px solid #e5e7eb', outline: 'none', fontSize: '1.125rem', backgroundColor: 'transparent' }}
             />
             <div style={{ position: 'absolute', top: '12px', right: 0 }}>
@@ -121,6 +123,7 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
+              className="btn-auth-primary"
               style={{ width: '100%', display: 'flex', justifyContent: 'center', padding: '16px', border: 'none', borderRadius: '30px', fontSize: '1.125rem', fontWeight: 500, color: '#ffffff', backgroundColor: '#0f766e', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
             >
               {loading ? 'Entrando...' : 'Sign In'}
@@ -128,13 +131,14 @@ export const Login: React.FC = () => {
           </div>
         </form>
         
-        <div style={{ marginTop: '48px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div className="animate-fade-in-up animate-delay-200" style={{ marginTop: '48px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
            <p style={{ marginBottom: '24px', fontSize: '0.875rem', color: '#6b7280' }}>
              Ou entre com
            </p>
            <button 
              onClick={handleGoogleLogin} 
              disabled={loading}
+             className="btn-auth-social"
              style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 24px', borderRadius: '24px', border: '1px solid #e5e7eb', backgroundColor: '#ffffff', color: '#374151', fontSize: '1rem', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' }}>
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
