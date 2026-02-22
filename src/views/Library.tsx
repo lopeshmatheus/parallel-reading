@@ -26,7 +26,9 @@ export default function Library() {
     // Background sync translations if logged in
     const currentUser = auth.currentUser;
     if (currentUser) {
-      fetchCloudTranslations(currentUser.uid).catch(console.error);
+      fetchCloudTranslations(currentUser.uid).catch(err => {
+        console.warn("Could not sync translations from cloud. An adblocker might be blocking Firestore.", err);
+      });
     }
   }, []);
 
@@ -47,10 +49,13 @@ export default function Library() {
           
           allBooks = [...allBooks, ...missingLocal];
         } catch (err) {
-          console.error("Failed to fetch cloud books", err);
+          console.warn("Failed to fetch cloud books. An adblocker might be blocking Firestore.", err);
+          // We don't throw here so local books still load
         }
       }
       setBooks(allBooks);
+    } catch (err) {
+       console.error("Critical error fetching local books", err);
     } finally {
       setLoading(false);
     }
@@ -67,11 +72,20 @@ export default function Library() {
       
       const currentUser = auth.currentUser;
       if (currentUser) {
-        await uploadBookToCloud(file, currentUser.uid, bookId, parsedBook.title).catch(console.error);
+        try {
+          await uploadBookToCloud(file, currentUser.uid, bookId, parsedBook.title);
+        } catch (err: any) {
+          console.warn("Cloud upload failed, possibly due to an adblocker:", err);
+          // If the error message mentions blocked requests, we can alert the user
+          if (err?.message?.includes('network') || err?.message?.includes('fetch')) {
+             alert('O livro foi salvo localmente, mas a sincronização na nuvem foi bloqueada. Verifique se seu AdBlocker está bloqueando conexões com o Google (Firestore).');
+          }
+        }
       }
       
       await fetchBooks();
     } catch (err) {
+      console.error(err);
       alert('Erro ao processar arquivo EPUB.');
     } finally {
       setLoading(false);
