@@ -1,4 +1,6 @@
 import { getDB } from './storageService'; // We'll export getDB for translation to use
+import { syncTranslationToCloud } from './cloudService';
+import { auth } from './firebase';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -9,6 +11,7 @@ export const translateSentences = async (sentences: string[], targetLang: string
   const results: string[] = new Array(sentences.length);
   const missingIndices: number[] = [];
   const missingSentences: string[] = [];
+  const currentUser = auth.currentUser;
 
   // Check cache first
   for (let i = 0; i < sentences.length; i++) {
@@ -80,6 +83,11 @@ ${missingSentences.join('\n')}`;
 
       results[idx] = translated;
       await db.put('translations', { original, translated, lang: targetLang });
+      
+      // Sync to cloud if user is logged in
+      if (currentUser) {
+        syncTranslationToCloud(currentUser.uid, original, translated, targetLang);
+      }
     }
 
   } catch (err) {

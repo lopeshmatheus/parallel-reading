@@ -1,22 +1,59 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBooks, saveBook, removeBook } from '../services/storageService';
-import { parseEpub, type Book } from '../services/epubService';
+import { getBooks, saveBook, removeBook, getDB } from '../services/storageService';
+import { parseEpub } from '../services/epubService';
 import { useAuth } from '../components/AuthContext';
+import { auth } from '../services/firebase';
+import { uploadBookToCloud, getUserCloudBooks, downloadBookFromCloud, deleteBookFromCloud, fetchCloudTranslations } from '../services/cloudService';
+
+type LibraryBook = {
+  id: string;
+  title: string;
+  chapters?: any[];
+  isCloudOnly?: boolean;
+  storagePath?: string;
+};
 
 export default function Library() {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [books, setBooks] = useState<(Book & { id: string })[]>([]);
+  const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchBooks();
+    
+    // Background sync translations if logged in
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      fetchCloudTranslations(currentUser.uid).catch(console.error);
+    }
   }, []);
 
   const fetchBooks = async () => {
-    const data = await getBooks();
-    setBooks(data);
+    try {
+      setLoading(true);
+      const localBooks = await getBooks();
+      let allBooks: LibraryBook[] = [...localBooks];
+
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const cloudBooks = await getUserCloudBooks(currentUser.uid);
+          
+          // Merge cloud books that aren't local
+          const localIds = new Set(localBooks.map(b => b.id));
+          const missingLocal = cloudBooks.filter(cb => !localIds.has(cb.id));
+          
+          allBooks = [...allBooks, ...missingLocal];
+        } catch (err) {
+          console.error("Failed to fetch cloud books", err);
+        }
+      }
+      setBooks(allBooks);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,7 +63,13 @@ export default function Library() {
     setLoading(true);
     try {
       const parsedBook = await parseEpub(file);
-      await saveBook(parsedBook);
+      const bookId = await saveBook(parsedBook);
+      
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await uploadBookToCloud(file, currentUser.uid, bookId, parsedBook.title).catch(console.error);
+      }
+      
       await fetchBooks();
     } catch (err) {
       alert('Erro ao processar arquivo EPUB.');
@@ -36,10 +79,47 @@ export default function Library() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (book: LibraryBook) => {
     if (window.confirm('Tem certeza que deseja remover este livro?')) {
-      await removeBook(id);
-      await fetchBooks();
+      setLoading(true);
+      try {
+        if (!book.isCloudOnly) {
+          await removeBook(book.id);
+        }
+        
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          await deleteBookFromCloud(currentUser.uid, book.id).catch(console.error);
+        }
+        
+        await fetchBooks();
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleRead = async (book: LibraryBook) => {
+    if (book.isCloudOnly && book.storagePath) {
+      setLoading(true);
+      try {
+         const blob = await downloadBookFromCloud(book.storagePath);
+         const file = new File([blob], `${book.title}.epub`, { type: 'application/epub+zip' });
+         const parsedBook = await parseEpub(file);
+         
+         // Save to IndexedDB with the exact SAME ID
+         const db = await getDB();
+         await db.put('books', { ...parsedBook, id: book.id });
+         
+         navigate(`/reader?bookId=${book.id}`);
+      } catch (err) {
+         console.error('Download failed', err);
+         alert('Erro ao baixar livro da nuvem.');
+      } finally {
+         setLoading(false);
+      }
+    } else {
+      navigate(`/reader?bookId=${book.id}`);
     }
   };
 
@@ -73,7 +153,7 @@ export default function Library() {
             <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', marginBottom: '16px' }}>📖</div>
             <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '8px', fontWeight: '500' }}>Toque ou arraste um livro aqui</h3>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-              {loading ? 'Processando seu livro, aguarde...' : 'Formatos suportados: .epub'}
+              {loading ? 'Processando ou sincronizando, aguarde...' : 'Formatos suportados: .epub'}
             </p>
           </div>
           <input 
@@ -100,20 +180,23 @@ export default function Library() {
             {books.map(book => (
               <div key={book.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: 'var(--color-white)', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid var(--color-divider)' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--color-text)', marginBottom: '4px' }}>{book.title}</h3>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    {book.chapters.length} Capítulos
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--color-text)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {book.title}
+                  </h3>
+                  <div style={{ fontSize: '0.85rem', color: book.isCloudOnly ? '#3b82f6' : 'var(--color-text-secondary)' }}>
+                    {book.isCloudOnly ? '☁️ Na Nuvem (Clique em Ler para Baixar)' : `${book.chapters?.length || 0} Capítulos (Local)`}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button className="btn btn-secondary" style={{ padding: '0 24px', height: '40px', borderRadius: '20px' }} onClick={() => navigate(`/reader?bookId=${book.id}`)}>
+                  <button className="btn btn-secondary" style={{ padding: '0 24px', height: '40px', borderRadius: '20px' }} onClick={() => handleRead(book)} disabled={loading}>
                     Ler
                   </button>
                   <button 
                     className="btn btn-danger" 
                     style={{ padding: '0 16px', height: '40px', borderRadius: '20px', backgroundColor: '#fee2e2', color: '#ef4444' }} 
-                    onClick={() => handleDelete(book.id)}
+                    onClick={() => handleDelete(book)}
                     title="Remover Livro"
+                    disabled={loading}
                   >
                     Excluir
                   </button>
