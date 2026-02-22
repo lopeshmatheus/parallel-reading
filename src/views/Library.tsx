@@ -19,45 +19,57 @@ export default function Library() {
   const { logout } = useAuth();
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
-    fetchBooks();
+    // Always load local books instantly on mount
+    loadLocalBooks();
     
-    // Background sync translations if logged in
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      fetchCloudTranslations(currentUser.uid).catch(err => {
-        console.warn("Could not sync translations from cloud. An adblocker might be blocking Firestore.", err);
-      });
-    }
+    // Subscribe to auth state so we reliably sync when user is confirmed
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        // Sync translations in background
+        fetchCloudTranslations(user.uid).catch(err => {
+          console.warn("Could not sync translations from cloud.", err);
+        });
+        // Sync books in background
+        syncCloudBooks(user.uid);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const fetchBooks = async () => {
+  const loadLocalBooks = async () => {
     try {
-      setLoading(true);
       const localBooks = await getBooks();
-      let allBooks: LibraryBook[] = [...localBooks];
-
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        try {
-          const cloudBooks = await getUserCloudBooks(currentUser.uid);
-          
-          // Merge cloud books that aren't local
-          const localIds = new Set(localBooks.map(b => b.id));
-          const missingLocal = cloudBooks.filter(cb => !localIds.has(cb.id));
-          
-          allBooks = [...allBooks, ...missingLocal];
-        } catch (err) {
-          console.warn("Failed to fetch cloud books. An adblocker might be blocking Firestore.", err);
-          // We don't throw here so local books still load
-        }
-      }
-      setBooks(allBooks);
+      // Only keep local books if we are not actively syncing (otherwise we might overwrite cloud books on a re-render)
+      // Actually, safest is to merge with current books state, giving preference to local
+      setBooks(prev => {
+        const cloudOnly = prev.filter(b => b.isCloudOnly);
+        const localIds = new Set(localBooks.map(b => b.id));
+        const missingCloud = cloudOnly.filter(cb => !localIds.has(cb.id));
+        return [...localBooks, ...missingCloud];
+      });
     } catch (err) {
-       console.error("Critical error fetching local books", err);
+      console.error("Critical error fetching local books", err);
+    }
+  };
+
+  const syncCloudBooks = async (uid: string) => {
+    try {
+      setIsSyncing(true);
+      const cloudBooks = await getUserCloudBooks(uid);
+      const localBooks = await getBooks();
+      
+      const localIds = new Set(localBooks.map(b => b.id));
+      const missingLocal = cloudBooks.filter(cb => !localIds.has(cb.id));
+      
+      setBooks([...localBooks, ...missingLocal]);
+    } catch (err) {
+      console.warn("Failed to fetch cloud books. An adblocker might be blocking Firestore.", err);
     } finally {
-      setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -67,23 +79,24 @@ export default function Library() {
 
     setLoading(true);
     try {
+      // 1. Process and save locally REALLY FAST
       const parsedBook = await parseEpub(file);
       const bookId = await saveBook(parsedBook);
       
+      // 2. Refresh UI immediately
+      await loadLocalBooks();
+      
+      // 3. Upload to cloud in the BACKGROUND without awaiting
       const currentUser = auth.currentUser;
       if (currentUser) {
-        try {
-          await uploadBookToCloud(file, currentUser.uid, bookId, parsedBook.title);
-        } catch (err: any) {
-          console.warn("Cloud upload failed, possibly due to an adblocker:", err);
-          // If the error message mentions blocked requests, we can alert the user
-          if (err?.message?.includes('network') || err?.message?.includes('fetch')) {
-             alert('O livro foi salvo localmente, mas a sincronização na nuvem foi bloqueada. Verifique se seu AdBlocker está bloqueando conexões com o Google (Firestore).');
-          }
-        }
+        setIsSyncing(true);
+        uploadBookToCloud(file, currentUser.uid, bookId, parsedBook.title)
+          .catch((err: any) => {
+            console.warn("Cloud upload failed, possibly due to an adblocker:", err);
+          })
+          .finally(() => setIsSyncing(false));
       }
       
-      await fetchBooks();
     } catch (err) {
       console.error(err);
       alert('Erro ao processar arquivo EPUB.');
@@ -95,18 +108,18 @@ export default function Library() {
 
   const handleDelete = async (book: LibraryBook) => {
     if (window.confirm('Tem certeza que deseja remover este livro?')) {
-      setLoading(true);
+      setLoading(true); // UI block for deletion is very fast locally
       try {
         if (!book.isCloudOnly) {
           await removeBook(book.id);
         }
+        await loadLocalBooks(); // Update UI immediately
         
+        // Delete from cloud in background
         const currentUser = auth.currentUser;
         if (currentUser) {
-          await deleteBookFromCloud(currentUser.uid, book.id).catch(console.error);
+          deleteBookFromCloud(currentUser.uid, book.id).catch(console.error);
         }
-        
-        await fetchBooks();
       } finally {
         setLoading(false);
       }
@@ -121,14 +134,13 @@ export default function Library() {
          const file = new File([blob], `${book.title}.epub`, { type: 'application/epub+zip' });
          const parsedBook = await parseEpub(file);
          
-         // Save to IndexedDB with the exact SAME ID
          const db = await getDB();
          await db.put('books', { ...parsedBook, id: book.id });
          
          navigate(`/reader?bookId=${book.id}`);
       } catch (err) {
          console.error('Download failed', err);
-         alert('Erro ao baixar livro da nuvem.');
+         alert('Erro ao baixar livro da nuvem. Verifique seu AdBlocker se estiver usando um.');
       } finally {
          setLoading(false);
       }
@@ -167,7 +179,9 @@ export default function Library() {
             <div style={{ fontSize: '2.5rem', color: 'var(--color-primary)', marginBottom: '16px' }}>📖</div>
             <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: '8px', fontWeight: '500' }}>Toque ou arraste um livro aqui</h3>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-              {loading ? 'Processando ou sincronizando, aguarde...' : 'Formatos suportados: .epub'}
+              {loading ? 'Processando livro, aguarde...' : 
+               isSyncing ? 'Sincronizando com a nuvem...' : 
+               'Formatos suportados: .epub'}
             </p>
           </div>
           <input 
