@@ -5,12 +5,14 @@ import { AuthProvider } from './components/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './views/Login';
 import { Register } from './views/Register';
+import { ReloadPrompt } from './components/ReloadPrompt';
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <div className="app-container min-h-screen">
+          <ReloadPrompt />
           <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Routes>
               {/* Public Routes */}
