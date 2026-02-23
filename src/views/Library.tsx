@@ -4,7 +4,7 @@ import { getBooks, saveBook, removeBook, getDB } from '../services/storageServic
 import { parseEpub } from '../services/epubService';
 import { useAuth } from '../components/AuthContext';
 import { auth } from '../services/firebase';
-import { uploadBookToCloud, getUserCloudBooks, downloadBookFromCloud, deleteBookFromCloud, fetchCloudTranslations } from '../services/cloudService';
+import { uploadBookToCloud, getUserCloudBooks, downloadBookFromCloud, deleteBookFromCloud, fetchCloudTranslations, type CloudBookMetadata } from '../services/cloudService';
 
 type LibraryBook = {
   id: string;
@@ -59,7 +59,15 @@ export default function Library() {
   const syncCloudBooks = async (uid: string) => {
     try {
       setIsSyncing(true);
-      const cloudBooks = await getUserCloudBooks(uid);
+      
+      // Ad blockers might block Firestore entirely, making the promise hang indefinitely.
+      // We wrap it in a timeout to release the UI if that happens.
+      const cloudBooksPromise = getUserCloudBooks(uid);
+      const timeoutPromise = new Promise<CloudBookMetadata[]>((_, reject) => 
+        setTimeout(() => reject(new Error("Firestore sync timeout - probably blocked by AdBlocker")), 5000)
+      );
+      
+      const cloudBooks = await Promise.race([cloudBooksPromise, timeoutPromise]);
       const localBooks = await getBooks();
       
       const localIds = new Set(localBooks.map(b => b.id));
